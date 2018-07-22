@@ -1,0 +1,81 @@
+﻿#if UNITY_EDITOR
+// ----------------------------------------------------------------------------
+// Based on Work from Ryan Hipple, Unite 2017 - Game Architecture with Scriptable Objects
+// ----------------------------------------------------------------------------
+
+using UnityEditor;
+using UnityEngine;
+
+namespace UE.Variables
+{
+    public abstract class ReferenceDrawer : PropertyDrawer
+    {
+        /// <summary>
+        /// Options to display in the popup to select constant or variable.
+        /// </summary>
+        private readonly string[] popupOptions =
+            {"Use Constant", "Use Variable"};
+
+        /// <summary> Cached style to use to draw the popup button. </summary>
+        private GUIStyle popupStyle;
+
+        public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+        {
+            if (popupStyle == null)
+            {
+                popupStyle = new GUIStyle(GUI.skin.GetStyle("PaneOptions"));
+                popupStyle.imagePosition = ImagePosition.ImageOnly;
+            }
+
+            label = EditorGUI.BeginProperty(position, label, property);
+            position = EditorGUI.PrefixLabel(position, label);
+
+            EditorGUI.BeginChangeCheck();
+
+            // Get properties
+            var useConstant = property.FindPropertyRelative("UseConstant");
+            var constantValue = property.FindPropertyRelative("ConstantValue");
+            var variable = property.FindPropertyRelative("Variable");
+
+            // Calculate rect for configuration button
+            Rect buttonRect = new Rect(position);
+            buttonRect.yMin += popupStyle.margin.top;
+            buttonRect.width = popupStyle.fixedWidth + popupStyle.margin.right;
+            position.xMin = buttonRect.xMax;
+
+            // Store old indent level and set it to 0, the PrefixLabel takes care of it
+            int indent = EditorGUI.indentLevel;
+            EditorGUI.indentLevel = 0;
+
+            int result = EditorGUI.Popup(buttonRect, useConstant.boolValue ? 0 : 1, popupOptions, popupStyle);
+
+            useConstant.boolValue = result == 0;
+
+            if (useConstant.boolValue)
+                DrawConstantProperty(position, property, constantValue);
+            else
+                EditorGUI.PropertyField(position, variable, GUIContent.none);
+
+            if (EditorGUI.EndChangeCheck())
+                property.serializedObject.ApplyModifiedProperties();
+
+            EditorGUI.indentLevel = indent;
+            EditorGUI.EndProperty();
+        }
+
+        /// <summary>
+        /// Draws the constant property field. Override this if you want to use custom attributes.
+        /// </summary>
+        /// <param name="position"></param>
+        /// <param name="property"></param>
+        /// <param name="constantValue"></param>
+        protected virtual void DrawConstantProperty(
+            Rect position, 
+            SerializedProperty property,
+            SerializedProperty constantValue)
+        {
+            EditorGUI.PropertyField(position, constantValue, GUIContent.none);
+        }
+    }
+}
+#endif
